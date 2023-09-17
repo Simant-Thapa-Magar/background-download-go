@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 )
 
 type FileInfo struct {
@@ -21,23 +22,19 @@ func enableCors(w *http.ResponseWriter) {
 }
 
 func GetFileInfo() []FileInfo {
-	files := []FileInfo{
-		{
-			FileName:     "25MB",
-			DownloadLink: "/pdf?size=25",
-		},
-		{
-			FileName:     "50MB",
-			DownloadLink: "/pdf?size=50",
-		},
-		{
-			FileName:     "75MB",
-			DownloadLink: "/pdf?size=75",
-		},
-		{
-			FileName:     "99MB",
-			DownloadLink: "/pdf?size=99",
-		},
+	var files []FileInfo
+
+	fileList, err := ioutil.ReadDir("./files")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for _, file := range fileList {
+		fileName := file.Name()
+		files = append(files, FileInfo{
+			FileName:     strings.Split(fileName, ".")[0],
+			DownloadLink: fmt.Sprintf("/pdf?file=%s", fileName),
+		})
 	}
 
 	return files
@@ -60,21 +57,9 @@ func Info(w http.ResponseWriter, r *http.Request) {
 func PDF(w http.ResponseWriter, r *http.Request) {
 	enableCors(&w)
 
-	sizeQuery := r.URL.Query().Get("size")
-	fileSize := ""
+	fileQuery := r.URL.Query().Get("file")
 
-	switch sizeQuery {
-	case "50":
-		fileSize = "50"
-	case "75":
-		fileSize = "75"
-	case "99":
-		fileSize = "99"
-	default:
-		fileSize = "25"
-	}
-
-	FILEPATH := fmt.Sprintf("./files/%sMB.pdf", fileSize)
+	FILEPATH := fmt.Sprintf("./files/%s", fileQuery)
 
 	fileStat, err := os.Stat(FILEPATH)
 	if err != nil {
